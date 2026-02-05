@@ -76,3 +76,22 @@ variable "ssh_public_key" {
 
 # Credenciales OpenStack (se obtienen automáticamente del provider OVH)
 # No necesitas añadirlas manualmente si usas el provider OVH configurado
+
+# Credenciales OpenStack para OVH Public Cloud
+variable "openstack_tenant_id" {
+  description = "OpenStack Tenant ID (Project ID)"
+  type        = string
+  sensitive   = true
+}
+
+variable "openstack_username" {
+  description = "OpenStack username"
+  type        = string
+  sensitive   = true
+}
+
+variable "openstack_password" {
+  description = "OpenStack password"
+  type        = string
+  sensitive   = true
+}

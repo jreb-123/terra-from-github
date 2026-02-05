@@ -33,13 +33,16 @@ jobs:
           terraform_version: 1.7.0
           terraform_wrapper: false
 
+      - name: Clean Terraform cache
+        run: |
+          rm -rf .terraform
+          rm -f .terraform.lock.hcl
+
       - name: Terraform Init
         run: terraform init
-        env:
-          TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
-          TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
-          TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
-          TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
+
+      - name: Terraform Validate
+        run: terraform validate
 
       - name: Terraform Plan
         if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
@@ -50,6 +53,10 @@ jobs:
           TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
           TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
           TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+          TF_VAR_ssh_public_key: ${{ secrets.OVH_SSH_PUBLIC_KEY }}
+          TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
+          TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
+          TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
 
       - name: Terraform Apply
         if: github.event.inputs.action == 'apply'
@@ -60,6 +67,10 @@ jobs:
           TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
           TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
           TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+          TF_VAR_ssh_public_key: ${{ secrets.OVH_SSH_PUBLIC_KEY }}
+          TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
+          TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
+          TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
 
       - name: Generate Ansible Inventory
         if: github.event.inputs.action == 'apply'
@@ -82,6 +93,10 @@ jobs:
           TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
           TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
           TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+          TF_VAR_ssh_public_key: ${{ secrets.OVH_SSH_PUBLIC_KEY }}
+          TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
+          TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
+          TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
 
   ansible:
     name: 'Configure K3s Cluster'
@@ -114,7 +129,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
 
       - name: Wait for instances to be ready
-        run: sleep 60
+        run: sleep 90
 
       - name: Install K3s cluster
         run: ansible-playbook playbooks/k3s-install.yml
