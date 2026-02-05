@@ -24,26 +24,43 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.0
-      - name: 🔄 FORCE Reset Terraform State
+
+      - name: 💥 NUCLEAR OPTION - Remove ALL Stale State
         run: |
           cd ${{ github.workspace }}/providers/ovh/terraform
-          rm -rf .terraform .terraform.lock.hcl terraform.tfstate*
-          git clean -fdx -e "*.tf" -e "*.tfvars" -e "*.yml" -e "*.yaml"
-          find . -name "terraform.tfstate*" -delete 2>/dev/null || true
-          find . -name ".terraform" -type d -exec rm -rf {} + 2>/dev/null || true
-          echo "✅ Terraform state FORZADO reset"
-          ls -la *.tfstate* || echo "No tfstate files found"
+          rm -rf .terraform* terraform.tfstate* override.tfstate* backend* .terraform.rc
+          echo "TF_CLI_ARGS_init=-reconfigure" >> $GITHUB_ENV
+          echo "✅ Nuclear clean complete"
+
       - name: Terraform Init
         run: terraform init -upgrade
+
+      - name: 🧹 Remove Stale Resources from State
+        if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+        run: |
+          terraform state rm openstack_compute_keypair_v2.k3s_keypair || true
+          terraform state rm openstack_compute_instance_v2.k3s_master || true
+          terraform state rm openstack_compute_instance_v2.k3s_worker || true
+          terraform state rm openstack_networking_secgroup_v2.k3s_secgroup || true
+          terraform state rm openstack_networking_secgroup_rule_v2.ssh || true
+          terraform state rm openstack_networking_secgroup_rule_v2.k3s_api || true
+          terraform state rm openstack_networking_secgroup_rule_v2.http || true
+          terraform state rm openstack_networking_secgroup_rule_v2.https || true
+          terraform state rm openstack_networking_secgroup_rule_v2.internal || true
+          echo "✅ Stale resources removed from state"
+
       - name: Terraform Validate
         run: terraform validate
+
       - name: Terraform Plan
         if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
-        run: terraform plan -out=tfplan
+        id: plan
+        run: terraform plan -out=tfplan -detailed-exitcode
         env:
           TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
           TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
@@ -54,6 +71,7 @@ jobs:
           TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
           TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
           TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
+
       - name: Terraform Apply
         if: github.event.inputs.action == 'apply'
         run: terraform apply tfplan
@@ -67,15 +85,18 @@ jobs:
           TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
           TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
           TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
+
       - name: Generate Ansible Inventory
         if: github.event.inputs.action == 'apply'
         run: terraform output -raw ansible_inventory > ../../ansible/inventory/hosts.yml
+
       - name: Upload Ansible Inventory
         if: github.event.inputs.action == 'apply'
         uses: actions/upload-artifact@v4
         with:
           name: ansible-inventory
           path: providers/ovh/ansible/inventory/hosts.yml
+
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
         run: terraform destroy -auto-approve
@@ -89,6 +110,7 @@ jobs:
           TF_VAR_openstack_tenant_id: ${{ secrets.OPENSTACK_TENANT_ID }}
           TF_VAR_openstack_username: ${{ secrets.OPENSTACK_USERNAME }}
           TF_VAR_openstack_password: ${{ secrets.OPENSTACK_PASSWORD }}
+
   ansible:
     name: 'Configure K3s Cluster'
     needs: terraform
@@ -100,25 +122,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Download Ansible Inventory
         uses: actions/download-artifact@v4
         with:
           name: ansible-inventory
           path: providers/ovh/ansible/inventory/
+
       - name: Install Ansible
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
+
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.OVH_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
       - name: Wait for instances to be ready
         run: sleep 90
+
       - name: Install K3s cluster
         run: ansible-playbook playbooks/k3s-install.yml
+
       - name: Configure cluster
         run: ansible-playbook playbooks/cluster-config.yml
+
       - name: Install ArgoCD
         run: ansible-playbook playbooks/argocd-install.yml
