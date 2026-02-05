@@ -1,0 +1,126 @@
+name: 'OVH K3s Cluster Deploy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: 'Terraform ${{ github.event.inputs.action }}'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./providers/ovh/terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
+          TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
+          TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
+          TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
+
+      - name: Terraform Plan
+        if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+        run: terraform plan
+        env:
+          TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
+          TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
+          TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
+          TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
+          TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
+          TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
+          TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
+          TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
+          TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+
+      - name: Generate Ansible Inventory
+        if: github.event.inputs.action == 'apply'
+        run: |
+          terraform output -raw ansible_inventory > ../../ansible/inventory/hosts.yml
+
+      - name: Upload Ansible Inventory
+        if: github.event.inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-inventory
+          path: providers/ovh/ansible/inventory/hosts.yml
+
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
+        env:
+          TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
+          TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
+          TF_VAR_ovh_application_secret: ${{ secrets.OVH_APPLICATION_SECRET }}
+          TF_VAR_ovh_consumer_key: ${{ secrets.OVH_CONSUMER_KEY }}
+          TF_VAR_service_name: ${{ secrets.OVH_SERVICE_NAME }}
+
+  ansible:
+    name: 'Configure K3s Cluster'
+    needs: terraform
+    if: github.event.inputs.action == 'apply'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./providers/ovh/ansible
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Ansible Inventory
+        uses: actions/download-artifact@v4
+        with:
+          name: ansible-inventory
+          path: providers/ovh/ansible/inventory/
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OVH_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Wait for instances to be ready
+        run: sleep 60
+
+      - name: Install K3s cluster
+        run: ansible-playbook playbooks/k3s-install.yml
+
+      - name: Configure cluster
+        run: ansible-playbook playbooks/cluster-config.yml
+
+      - name: Install ArgoCD
+        run: ansible-playbook playbooks/argocd-install.yml
