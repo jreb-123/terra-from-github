@@ -6,15 +6,9 @@ terraform {
       source  = "ovh/ovh"
       version = "~> 0.35"
     }
+    openstack = {
+      source  = "terraform-provider-openstack/openstack"
+      version = "~> 1.54.0"
+    }
   }
-
-  # Backend local por ahora (puedes cambiarlo a S3 compatible)
-  # backend "s3" {
-  #   bucket                      = "terraform-state"
-  #   key                         = "ovh/k3s-cluster.tfstate"
-  #   region                      = "gra"
-  #   endpoint                    = "s3.gra.io.cloud.ovh.net"
-  #   skip_credentials_validation = true
-  #   skip_region_validation      = true
-  # }
 }
