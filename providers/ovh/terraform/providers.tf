@@ -12,4 +12,5 @@ provider "openstack" {
   user_name   = var.openstack_username
   password    = var.openstack_password
   region      = var.region
+  insecure    = true
 }
