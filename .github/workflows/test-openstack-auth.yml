@@ -1,0 +1,50 @@
+name: 'Test OpenStack Auth'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test OpenStack Authentication
+        run: |
+          echo "Testing OpenStack credentials..."
+          
+          # Intentar autenticarse
+          response=$(curl -s -X POST "https://auth.cloud.ovh.net/v3/auth/tokens" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "auth": {
+                "identity": {
+                  "methods": ["password"],
+                  "password": {
+                    "user": {
+                      "name": "'"$OPENSTACK_USER"'",
+                      "domain": {"name": "default"},
+                      "password": "'"$OPENSTACK_PASS"'"
+                    }
+                  }
+                },
+                "scope": {
+                  "project": {
+                    "id": "'"$OPENSTACK_TENANT"'",
+                    "domain": {"name": "default"}
+                  }
+                }
+              }
+            }')
+          
+          echo "Response: $response"
+          
+          if echo "$response" | grep -q "token"; then
+            echo "✅ Authentication SUCCESSFUL!"
+          else
+            echo "❌ Authentication FAILED!"
+            echo "Error details: $response"
+            exit 1
+          fi
+        env:
+          OPENSTACK_USER: ${{ secrets.OPENSTACK_USERNAME }}
+          OPENSTACK_PASS: ${{ secrets.OPENSTACK_PASSWORD }}
+          OPENSTACK_TENANT: ${{ secrets.OPENSTACK_TENANT_ID }}
