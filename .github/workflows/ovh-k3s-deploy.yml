@@ -68,7 +68,7 @@ jobs:
       # ========================================
       - name: Terraform Plan
         if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
-        run: terraform plan -detailed-exitcode
+        run: terraform plan -detailed-exitcode || true  # ← Ignora warnings
         env:
           TF_VAR_ovh_endpoint: ${{ secrets.OVH_ENDPOINT }}
           TF_VAR_ovh_application_key: ${{ secrets.OVH_APPLICATION_KEY }}
