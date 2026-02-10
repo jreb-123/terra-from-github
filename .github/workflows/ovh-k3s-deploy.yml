@@ -127,11 +127,16 @@ jobs:
       # ========================================
       # ANSIBLE (solo si apply exitoso)
       # ========================================
-      - name: 📊 Generate Ansible Inventory
-        if: github.event.inputs.action == 'apply' && success()
-        run: |
-          mkdir -p ../../ansible/inventory/
-          terraform output -raw ansible_inventory > ../../ansible/inventory/hosts.yml || echo "{}" > ../../ansible/inventory/hosts.yml
+      
+
+    - name: 📊 Generate Ansible Inventory
+      if: github.event.inputs.action == 'apply'
+      run: |
+        echo "🎯 Generando inventario Ansible..."
+        mkdir -p ../../ansible/inventory/
+        terraform output -raw ansible_inventory > ../../ansible/inventory/hosts.yml || echo "all:\n  children:\n    k3s_masters:\n      hosts: {}" > ../../ansible/inventory/hosts.yml
+        cat ../../ansible/inventory/hosts.yml
+
 
       - name: 📦 Upload Ansible Inventory
         if: github.event.inputs.action == 'apply' && success()
