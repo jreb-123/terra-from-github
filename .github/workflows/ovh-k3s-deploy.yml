@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: .
+        working-directory: ./providers/ovh/terraform
 
     steps:
       - name: Checkout
@@ -132,7 +132,7 @@ EOF
         uses: actions/upload-artifact@v4
         with:
           name: ansible-inventory
-          path: providers/ovh/ansible/inventory/
+          path: ../../ansible/inventory/
 
       - name: 💥 Destroy/Clean
         if: github.event.inputs.action == 'destroy' || github.event.inputs.action == 'clean'
@@ -147,7 +147,7 @@ EOF
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./providers/ovh/ansible
+        working-directory: ./providers/ovh/terraform/providers/ovh/ansible
 
     steps:
       - name: Checkout
