@@ -193,7 +193,7 @@ EOF
           done
 
       - name: ⏳ Wait instances (5min)
-        run: sleep 300
+        run: sleep 301
 
       - name: 🚀 Install K3s
         run: ansible-playbook -i inventory/hosts.yml playbooks/k3s-install.yml || echo "K3s via cloud-init OK"
