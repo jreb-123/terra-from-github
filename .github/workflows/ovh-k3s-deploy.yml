@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./providers/ovh/terraform
+        working-directory: ./providers/ovh/terraform/providers/ovh/terraform
 
     steps:
       - name: Checkout
@@ -147,7 +147,7 @@ EOF
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./providers/ovh/terraform/providers/ovh/ansible
+        working-directory: ./providers/ovh/terraform/providers/ovh/terraform/providers/ovh/ansible
 
     steps:
       - name: Checkout
@@ -209,3 +209,4 @@ EOF
           ansible all:!unreachable -i inventory/hosts.yml -m ping
           echo "🎉 K3s cluster deployment COMPLETED!"
 
+# Workflow fix Tue Feb 10 11:35:54 UTC 2026
