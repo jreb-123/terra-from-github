@@ -197,7 +197,7 @@ jobs:
           ssh-keyscan -H 57.128.51.87 >> ~/.ssh/known_hosts  # ← **CAMBIAR IP**
 
       - name: ⏳ Wait instances ready (5min)
-        run: sleep 300
+        run: sleep 360
 
       - name: 🚀 Install K3s
         run: ansible-playbook -i inventory/hosts.yml playbooks/k3s-install.yml
