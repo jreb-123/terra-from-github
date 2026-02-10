@@ -208,3 +208,4 @@ EOF
         run: |
           ansible all:!unreachable -i inventory/hosts.yml -m ping
           echo "🎉 K3s cluster deployment COMPLETED!"
+
