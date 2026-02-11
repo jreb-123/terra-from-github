@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-html
+  labels:
+    app: {{ .Release.Name }}
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{{ .Values.customHtml.title }}</title>
+      <style>
+        body {
+          background-color: {{ .Values.customHtml.bgColor }};
+          color: {{ .Values.customHtml.textColor }};
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          margin: 0;
+        }
+        .container {
+          text-align: center;
+          padding: 2rem;
+          background-color: {{ .Values.customHtml.accentColor }};
+          border-radius: 12px;
+          max-width: 600px;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+        p { font-size: 1.2rem; line-height: 1.6; }
+        .info { font-size: 0.9rem; margin-top: 2rem; opacity: 0.7; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>{{ .Values.customHtml.heading }}</h1>
+        <p>{{ .Values.customHtml.message }}</p>
+        <p class="info">Deployed via ArgoCD GitOps</p>
+      </div>
+    </body>
+    </html>

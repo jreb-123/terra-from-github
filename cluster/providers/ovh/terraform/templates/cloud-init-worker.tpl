@@ -17,5 +17,6 @@ runcmd:
   - ufw allow 22/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
+  - ufw allow 30080/tcp
   - ufw --force enable
   - echo "Worker node ${node_index} initialized" > /var/log/cloud-init-done.log

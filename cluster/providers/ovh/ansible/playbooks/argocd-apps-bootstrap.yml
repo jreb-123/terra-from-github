@@ -1,0 +1,63 @@
+---
+- name: Bootstrap ArgoCD Applications
+  hosts: k3s_master
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Create ArgoCD apps directory on master
+      file:
+        path: /tmp/argocd-apps
+        state: directory
+        mode: '0755'
+
+    - name: Copy ArgoCD Application manifests
+      copy:
+        src: "{{ playbook_dir }}/../../../apps/argocd-apps/"
+        dest: /tmp/argocd-apps/
+        mode: '0644'
+
+    - name: Wait for ArgoCD server to be ready
+      command: kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      retries: 3
+      delay: 10
+      register: argocd_ready
+      until: argocd_ready.rc == 0
+
+    - name: Apply ArgoCD Application manifests
+      command: kubectl apply -f /tmp/argocd-apps/
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: apply_result
+
+    - name: Show applied resources
+      debug:
+        var: apply_result.stdout_lines
+
+    - name: Wait for nginx-demo application to sync
+      shell: |
+        kubectl get application nginx-demo -n argocd -o jsonpath='{.status.sync.status}'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: sync_status
+      retries: 30
+      delay: 10
+      until: sync_status.stdout == "Synced"
+      ignore_errors: true
+
+    - name: Show ArgoCD application status
+      command: kubectl get applications -n argocd -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: app_status
+
+    - name: Display application status
+      debug:
+        var: app_status.stdout_lines
+
+    - name: Cleanup temporary files
+      file:
+        path: /tmp/argocd-apps
+        state: absent
