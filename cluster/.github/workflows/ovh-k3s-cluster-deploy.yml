@@ -35,6 +35,24 @@ jobs:
           rm -rf .terraform .terraform.lock.hcl terraform.tfstate*
         working-directory: ./cluster/providers/ovh/terraform
 
+      - name: Install OpenStack CLI
+        if: github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy' || github.event.inputs.action == 'clean'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-openstackclient
+
+      - name: Cleanup existing keypair
+        if: github.event.inputs.action == 'apply' || github.event.inputs.action == 'clean'
+        run: |
+          openstack keypair delete k3s-new-keypair || echo "Keypair not found, continuing"
+        env:
+          OS_AUTH_URL: "https://auth.cloud.ovh.net/v3"
+          OS_DOMAIN_NAME: "default"
+          OS_TENANT_ID: ${{ secrets.OPENSTACK_TENANT_ID }}
+          OS_USERNAME: ${{ secrets.OPENSTACK_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
+          OS_REGION_NAME: "GRA11"
+
       - name: Terraform Init
         run: terraform init -upgrade
         working-directory: ./cluster/providers/ovh/terraform
