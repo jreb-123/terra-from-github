@@ -1,0 +1,6 @@
+apiVersion: v2
+name: event-logger
+description: Event Logger microservice with NATS JetStream
+type: application
+version: 0.1.0
+appVersion: "1"
