@@ -11,8 +11,7 @@ service:
 
 ingress:
   enabled: true
-  # Update IP after terraform apply with new VM IP
-  host: events.PENDING_NEW_IP.nip.io
+  host: events.51.255.12.10.nip.io
 
 nats:
   url: nats://nats.nats.svc.cluster.local:4222
