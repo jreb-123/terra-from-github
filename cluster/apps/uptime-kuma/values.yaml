@@ -11,7 +11,8 @@ service:
 
 ingress:
   enabled: true
-  host: uptime.51.210.89.84.nip.io
+  # Update IP after terraform apply with new VM IP
+  host: uptime.PENDING_NEW_IP.nip.io
 
 persistence:
   enabled: true

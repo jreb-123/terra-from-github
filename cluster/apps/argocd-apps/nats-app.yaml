@@ -20,6 +20,9 @@ spec:
               pvc:
                 enabled: true
                 size: 2Gi
+          monitor:
+            enabled: true
+            port: 8222
         container:
           resources:
             requests:
@@ -30,6 +33,11 @@ spec:
               memory: 256Mi
         natsBox:
           enabled: true
+        service:
+          ports:
+            monitor:
+              enabled: true
+              port: 8222
   destination:
     server: https://kubernetes.default.svc
     namespace: nats

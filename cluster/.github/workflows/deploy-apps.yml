@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       master_ip:
-        description: 'K3s master node IP (leave empty to use K3S_MASTER_IP secret)'
+        description: 'K3D host IP (leave empty to use K3S_MASTER_IP secret)'
         required: false
         type: string
   push:
@@ -17,14 +17,14 @@ permissions:
 
 jobs:
   deploy-apps:
-    name: 'Deploy Apps to K3s'
+    name: 'Deploy Apps to K3D'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Determine master IP
+      - name: Determine host IP
         id: master
         run: |
           if [ -n "${{ github.event.inputs.master_ip }}" ]; then
@@ -35,10 +35,10 @@ jobs:
             echo "Using IP from secret K3S_MASTER_IP"
           fi
 
-      - name: Validate master IP
+      - name: Validate host IP
         run: |
           if [ -z "${{ steps.master.outputs.ip }}" ]; then
-            echo "ERROR: No master IP provided. Set K3S_MASTER_IP secret or pass it as input."
+            echo "ERROR: No host IP provided. Set K3S_MASTER_IP secret or pass it as input."
             exit 1
           fi
 
@@ -58,19 +58,19 @@ jobs:
       - name: Wait for ArgoCD to be ready
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ steps.master.outputs.ip }} \
-            "sudo kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s --kubeconfig /etc/rancher/k3s/k3s.yaml"
+            "kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s"
 
       - name: Apply ArgoCD Applications
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ steps.master.outputs.ip }} \
-            "sudo kubectl apply -f /tmp/argocd-apps/ --kubeconfig /etc/rancher/k3s/k3s.yaml"
+            "kubectl apply -f /tmp/argocd-apps/"
 
       - name: Wait for applications to sync
         run: |
           echo "Waiting for ArgoCD applications to sync..."
           for i in $(seq 1 30); do
             STATUS=$(ssh -o StrictHostKeyChecking=no ubuntu@${{ steps.master.outputs.ip }} \
-              "sudo kubectl get applications -n argocd -o jsonpath='{range .items[*]}{.metadata.name}={.status.sync.status} {end}' --kubeconfig /etc/rancher/k3s/k3s.yaml" 2>/dev/null || true)
+              "kubectl get applications -n argocd -o jsonpath='{range .items[*]}{.metadata.name}={.status.sync.status} {end}'" 2>/dev/null || true)
             echo "Attempt $i/30: $STATUS"
             if echo "$STATUS" | grep -v "OutOfSync" | grep -q "Synced"; then
               echo "All applications synced!"
@@ -82,12 +82,12 @@ jobs:
       - name: Show application status
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ steps.master.outputs.ip }} \
-            "sudo kubectl get applications -n argocd -o wide --kubeconfig /etc/rancher/k3s/k3s.yaml"
+            "kubectl get applications -n argocd -o wide"
 
       - name: Show deployed resources
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ steps.master.outputs.ip }} \
-            "sudo kubectl get pods,svc -n nginx-demo --kubeconfig /etc/rancher/k3s/k3s.yaml" || true
+            "kubectl get pods,svc -A" || true
 
       - name: Cleanup
         if: always()

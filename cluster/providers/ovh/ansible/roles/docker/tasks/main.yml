@@ -1,0 +1,28 @@
+---
+- name: Install Docker packages
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+    update_cache: yes
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add user to docker group
+  user:
+    name: "{{ docker_user }}"
+    groups: docker
+    append: yes
+
+- name: Reset SSH connection to apply group changes
+  meta: reset_connection
+
+- name: Verify Docker is running
+  command: docker info
+  become: no
+  changed_when: false

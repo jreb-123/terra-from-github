@@ -1,0 +1,62 @@
+---
+- name: Install k3d CLI
+  shell: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+  args:
+    creates: /usr/local/bin/k3d
+
+- name: Install kubectl
+  snap:
+    name: kubectl
+    classic: yes
+
+- name: Check if K3D cluster exists
+  command: k3d cluster list -o json
+  become: no
+  register: k3d_clusters
+  changed_when: false
+
+- name: Create K3D cluster
+  command: >
+    k3d cluster create {{ k3d_cluster_name }}
+    --api-port {{ k3d_api_port }}
+    --port 80:80@loadbalancer
+    --port 443:443@loadbalancer
+    --agents {{ k3d_agents }}
+    --wait
+  become: no
+  when: k3d_cluster_name not in k3d_clusters.stdout
+
+- name: Create .kube directory
+  file:
+    path: /home/{{ docker_user | default('ubuntu') }}/.kube
+    state: directory
+    owner: "{{ docker_user | default('ubuntu') }}"
+    group: "{{ docker_user | default('ubuntu') }}"
+    mode: '0755'
+
+- name: Get kubeconfig from K3D
+  shell: k3d kubeconfig get {{ k3d_cluster_name }}
+  become: no
+  register: k3d_kubeconfig
+  changed_when: false
+
+- name: Write kubeconfig
+  copy:
+    content: "{{ k3d_kubeconfig.stdout }}"
+    dest: /home/{{ docker_user | default('ubuntu') }}/.kube/config
+    owner: "{{ docker_user | default('ubuntu') }}"
+    group: "{{ docker_user | default('ubuntu') }}"
+    mode: '0600'
+
+- name: Wait for cluster nodes to be ready
+  command: kubectl get nodes
+  become: no
+  register: nodes_output
+  retries: 12
+  delay: 10
+  until: "'NotReady' not in nodes_output.stdout"
+  changed_when: false
+
+- name: Display cluster nodes
+  debug:
+    var: nodes_output.stdout_lines

@@ -1,4 +1,4 @@
-name: 'OVH K3s New Cluster Deploy'
+name: 'OVH K3D Cluster Deploy'
 on:
   workflow_dispatch:
     inputs:
@@ -45,7 +45,7 @@ jobs:
       - name: Cleanup existing keypair
         if: github.event.inputs.action == 'apply' || github.event.inputs.action == 'clean'
         run: |
-          openstack keypair delete k3s-new-keypair || echo "Keypair not found, continuing"
+          openstack keypair delete k3d-cluster-keypair || echo "Keypair not found, continuing"
         env:
           OS_AUTH_URL: "https://auth.cloud.ovh.net/v3"
           OS_DOMAIN_NAME: "default"
