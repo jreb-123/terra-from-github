@@ -5,25 +5,67 @@
 Cluster Kubernetes ligero ejecutado con **K3D** (K3s-in-Docker) sobre una VM en OVH Public Cloud, gestionado via **GitOps** con ArgoCD. Toda la infraestructura se provisiona con Terraform y se configura con Ansible, automatizado mediante GitHub Actions.
 
 ```
-                    GitHub Actions (CI/CD)
-                           │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-         Terraform      Ansible     deploy-apps
-         (infra)       (config)    (ArgoCD apps)
-              │            │            │
-              ▼            ▼            ▼
-    ┌─────────────────────────────────────────┐
-    │  OVH Public Cloud - VM b2-7 (GRA11)    │
-    │  Ubuntu 22.04 - IP: 51.255.12.10       │
-    │                                         │
-    │  Docker Engine                          │
-    │  └── K3D Cluster "k3d-cluster"          │
-    │      ├── k3d-k3d-cluster-server-0       │
-    │      ├── k3d-k3d-cluster-agent-0        │
-    │      └── k3d-k3d-cluster-serverlb       │
-    │          (ports 80/443 → host)          │
-    └─────────────────────────────────────────┘
+┌─────────────────────────────────────── INFRAESTRUCTURA ────────────────────────────────────────┐
+│                                                                                                │
+│  GitHub Actions (CI/CD)              GCP (Terraform State)                                     │
+│  ├── terraform-plan/apply            └── GCS Backend                                          │
+│  ├── deploy-apps                                                                               │
+│  └── build-event-logger ──► GHCR (ghcr.io/usuario/event-logger)                              │
+│         │                                                                                      │
+└─────────┼──────────────────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────── OVH PUBLIC CLOUD ───────────────────────────────────────┐
+│  VM b2-7 (4 vCPU, 7GB RAM) · Ubuntu 22.04 · IP: 51.255.12.10 · Region: GRA11                │
+│  UFW: 22, 80, 443                                                                             │
+│                                                                                                │
+│  Docker Engine                                                                                 │
+│  └── K3D Cluster "k3d-cluster" (K3s v1.31.5 in Docker)                                       │
+│      ├── k3d-k3d-cluster-server-0 (control plane)                                             │
+│      ├── k3d-k3d-cluster-agent-0  (worker)                                                    │
+│      └── k3d-k3d-cluster-serverlb (ports 80/443 → host)                                      │
+│                                                                                                │
+│  ┌─────────────────────────────── NAMESPACES DEL CLUSTER ────────────────────────────────┐    │
+│  │                                                                                        │    │
+│  │  ┌──────────────────────────────────────────────────────────────────────────────────┐  │    │
+│  │  │  argocd                                                                          │  │    │
+│  │  │  ArgoCD v2.9.5 (GitOps CD)                                                      │  │    │
+│  │  │  http://argocd.51.255.12.10.nip.io                                              │  │    │
+│  │  │  Gestiona 8 Applications desde Git                                               │  │    │
+│  │  └───────────────────────────────┬──────────────────────────────────────────────────┘  │    │
+│  │                                  │ sync                                                │    │
+│  │          ┌───────────────────────┼───────────────────────┐                            │    │
+│  │          ▼                       ▼                       ▼                            │    │
+│  │  ┌──────────────┐    ┌───────────────────┐    ┌──────────────────┐                   │    │
+│  │  │  kyverno     │    │  keda             │    │  nats            │                   │    │
+│  │  │  v3.3.4      │    │  v2.19.0          │    │  v1.2.4          │                   │    │
+│  │  │              │    │                   │    │  JetStream       │                   │    │
+│  │  │  ClusterPolicy    │  ScaledObjects:   │    │  Stream: EVENTS  │                   │    │
+│  │  │  genera      │    │  - cron (horario) │    │  PVC 2Gi         │                   │    │
+│  │  │  ScaledObjects    │  - nats (eventos) │    │  :4222 / :8222   │                   │    │
+│  │  └──────┬───────┘    └────────┬──────────┘    └────────┬─────────┘                   │    │
+│  │         │ generate            │ scale                  │ consume/publish              │    │
+│  │         ▼                     ▼                        ▼                              │    │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────────┐  │    │
+│  │  │                        MICROSERVICIOS                                           │  │    │
+│  │  │                                                                                 │  │    │
+│  │  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────────┐ │  │    │
+│  │  │  │  nginx-demo     │  │  uptime-kuma    │  │  event-logger                  │ │  │    │
+│  │  │  │  ns: nginx-demo │  │  ns: uptime-kuma│  │  ns: event-logger              │ │  │    │
+│  │  │  │                 │  │                 │  │                                 │ │  │    │
+│  │  │  │  nginx:1.25.4   │  │  uptime-kuma:1  │  │  Go app (GHCR)                │ │  │    │
+│  │  │  │  NodePort:30080 │  │  Ingress:uptime.│  │  Ingress:events.               │ │  │    │
+│  │  │  │                 │  │  PVC 2Gi        │  │                                 │ │  │    │
+│  │  │  │  KEDA cron:     │  │  KEDA cron:     │  │  KEDA nats-jetstream:          │ │  │    │
+│  │  │  │  L-V 8-20h → 2 │  │  L-V 8-20h → 1 │  │  lag > 10 → 1-5 replicas      │ │  │    │
+│  │  │  │  resto   → 0   │  │  resto   → 0    │  │  siempre min 1 replica         │ │  │    │
+│  │  │  └─────────────────┘  └─────────────────┘  └─────────────────────────────────┘ │  │    │
+│  │  └─────────────────────────────────────────────────────────────────────────────────┘  │    │
+│  └────────────────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                                │
+│  Traefik (Ingress Controller - incluido en K3D)                                               │
+│  *.51.255.12.10.nip.io → argocd / uptime / events                                            │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Infraestructura (Terraform)
@@ -147,7 +189,7 @@ K3D Cluster
   - `GET /events` — Lista los ultimos 100 eventos consumidos
   - `GET /health` — Health check (estado NATS)
 - **Configuracion:**
-  - Imagen: `ghcr.io/jreb-123/event-logger:latest`
+  - Imagen: `ghcr.io/usuario/event-logger:latest`
   - Conecta a NATS en `nats://nats.nats.svc.cluster.local:4222`
   - Consumer durable `event-logger` en stream `EVENTS`
   - KEDA ScaledObject para autoscaling (1-5 replicas)
@@ -215,9 +257,29 @@ Escalar a 0 replicas los microservicios del entorno de desarrollo fuera del hora
 ### Arquitectura
 
 ```
-Deployment con label                    Kyverno                    KEDA
-keda/cron-schedule: "business-hours" ──► ClusterPolicy genera ──► ScaledObject cron
-+ annotations (replicas, timezone)       ScaledObject automatico   escala por horario
+┌──────────────────── FLUJO DE AUTOSCALING ─────────────────────┐
+│                                                                │
+│  Deployment                                                    │
+│  + label: keda/cron-schedule: "business-hours"                │
+│  + annotation: keda/desired-replicas: "2"                     │
+│  + annotation: keda/timezone: "Europe/Madrid"                 │
+│         │                                                      │
+│         ▼                                                      │
+│  Kyverno (ClusterPolicy)                                      │
+│  generate-keda-cron-scaledobject                              │
+│         │                                                      │
+│         ▼ genera automaticamente                              │
+│  ScaledObject (KEDA)                                          │
+│  trigger: cron                                                │
+│  start: "0 8 * * 1-5"  end: "0 20 * * 1-5"                  │
+│         │                                                      │
+│         ▼                                                      │
+│  ┌────────────────────────────────────────┐                   │
+│  │ L-V 08:00-20:00  → desiredReplicas    │                   │
+│  │ L-V 20:00-08:00  → 0 replicas         │                   │
+│  │ Sab-Dom          → 0 replicas         │                   │
+│  └────────────────────────────────────────┘                   │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### Componentes
