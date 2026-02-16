@@ -1,0 +1,54 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-keda-cron-scaledobject
+  annotations:
+    policies.kyverno.io/title: Generate KEDA Cron ScaledObject
+    policies.kyverno.io/description: >-
+      Genera automaticamente un KEDA ScaledObject con trigger cron para
+      cualquier Deployment que tenga el label keda/cron-schedule: "business-hours".
+      Requiere las annotations keda/desired-replicas y keda/timezone.
+spec:
+  rules:
+    - name: generate-cron-scaledobject
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              selector:
+                matchLabels:
+                  keda/cron-schedule: "business-hours"
+      preconditions:
+        all:
+          - key: "{{request.object.metadata.annotations.\"keda/desired-replicas\" || ''}}"
+            operator: NotEquals
+            value: ""
+          - key: "{{request.object.metadata.annotations.\"keda/timezone\" || ''}}"
+            operator: NotEquals
+            value: ""
+      generate:
+        synchronize: true
+        apiVersion: keda.sh/v1alpha1
+        kind: ScaledObject
+        name: "{{request.object.metadata.name}}-cron"
+        namespace: "{{request.object.metadata.namespace}}"
+        data:
+          metadata:
+            labels:
+              app: "{{request.object.metadata.name}}"
+              generated-by: kyverno
+          spec:
+            scaleTargetRef:
+              name: "{{request.object.metadata.name}}"
+            pollingInterval: 30
+            cooldownPeriod: 300
+            minReplicaCount: 0
+            maxReplicaCount: 10
+            triggers:
+              - type: cron
+                metadata:
+                  timezone: "{{request.object.metadata.annotations.\"keda/timezone\"}}"
+                  start: "0 8 * * 1-5"
+                  end: "0 20 * * 1-5"
+                  desiredReplicas: "{{request.object.metadata.annotations.\"keda/desired-replicas\"}}"

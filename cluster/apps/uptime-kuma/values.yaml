@@ -18,6 +18,11 @@ persistence:
   size: 2Gi
   storageClass: ""
 
+keda:
+  enabled: true
+  desiredReplicas: "1"
+  timezone: "Europe/Madrid"
+
 resources:
   requests:
     cpu: 50m

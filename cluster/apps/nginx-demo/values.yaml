@@ -18,6 +18,11 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+keda:
+  enabled: true
+  desiredReplicas: "2"
+  timezone: "Europe/Madrid"
+
 customHtml:
   title: "K3s Nginx Demo"
   heading: "Hello from K3s!"
