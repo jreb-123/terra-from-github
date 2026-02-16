@@ -28,6 +28,7 @@ spec:
             operator: NotEquals
             value: ""
       generate:
+        generateExisting: true
         synchronize: true
         apiVersion: keda.sh/v1alpha1
         kind: ScaledObject
