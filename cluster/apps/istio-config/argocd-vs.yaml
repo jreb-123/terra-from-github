@@ -5,7 +5,7 @@ metadata:
   namespace: istio-ingress
 spec:
   hosts:
-    - "argocd.92.222.102.13.nip.io"
+    - "argocd.92.222.102.117.nip.io"
   gateways:
     - main-gateway
   http:
