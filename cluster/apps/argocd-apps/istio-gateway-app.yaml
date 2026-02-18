@@ -13,6 +13,9 @@ spec:
     targetRevision: 1.24.2
     helm:
       valuesObject:
+        image:
+          repository: docker.io/istio/proxyv2
+          tag: 1.24.2
         service:
           type: LoadBalancer
           ports:
