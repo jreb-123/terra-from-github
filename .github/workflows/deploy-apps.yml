@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       master_ip:
-        description: 'K3D host IP (leave empty to use K3S_MASTER_IP secret)'
+        description: 'K3s master IP (leave empty to use K3S_MASTER_IP secret)'
         required: false
         type: string
   push:
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   deploy-apps:
-    name: 'Deploy Apps to K3D'
+    name: 'Deploy Apps to K3s'
     runs-on: ubuntu-latest
 
     steps:
