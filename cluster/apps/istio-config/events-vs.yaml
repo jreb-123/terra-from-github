@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: event-logger
+  namespace: istio-ingress
+spec:
+  hosts:
+    - "events.NEW_IP.nip.io"
+  gateways:
+    - main-gateway
+  http:
+    - route:
+        - destination:
+            host: event-logger.event-logger.svc.cluster.local
+            port:
+              number: 8080

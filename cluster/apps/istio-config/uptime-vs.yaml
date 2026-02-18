@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: uptime-kuma
+  namespace: istio-ingress
+spec:
+  hosts:
+    - "uptime.NEW_IP.nip.io"
+  gateways:
+    - main-gateway
+  http:
+    - route:
+        - destination:
+            host: uptime-kuma.uptime-kuma.svc.cluster.local
+            port:
+              number: 3001

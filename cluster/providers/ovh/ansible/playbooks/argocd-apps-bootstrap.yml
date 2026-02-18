@@ -1,6 +1,6 @@
 ---
 - name: Bootstrap ArgoCD Applications
-  hosts: k3d_hosts[0]
+  hosts: k3s_masters[0]
   become: no
   gather_facts: false
 

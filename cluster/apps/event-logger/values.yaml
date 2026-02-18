@@ -10,7 +10,7 @@ service:
   port: 8080
 
 ingress:
-  enabled: true
+  enabled: false
   host: events.51.255.12.10.nip.io
 
 nats:

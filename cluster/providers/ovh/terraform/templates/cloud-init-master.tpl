@@ -10,19 +10,17 @@ packages:
   - wget
   - git
   - ufw
-  - docker.io
-  - docker-compose
 
 runcmd:
-  # Configurar firewall para K3D
+  # Firewall for K3s + Istio
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw allow 22/tcp
+  - ufw allow 6443/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
+  - ufw allow 10250/tcp
+  - ufw allow 15017/tcp
+  - ufw allow 15021/tcp
   - ufw --force enable
-  # Habilitar Docker
-  - systemctl enable docker
-  - systemctl start docker
-  - usermod -aG docker ubuntu
-  - echo "K3D host ${node_index} initialized" > /var/log/cloud-init-done.log
+  - echo "K3s master ${node_index} initialized" > /var/log/cloud-init-done.log

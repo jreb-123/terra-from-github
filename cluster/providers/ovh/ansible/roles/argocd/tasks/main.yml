@@ -12,11 +12,11 @@
 - name: Wait for ArgoCD to be ready
   command: kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n {{ argocd_namespace }}
 
-- name: Patch ArgoCD server service to LoadBalancer
+- name: Ensure ArgoCD server service is ClusterIP (Istio handles ingress)
   command: |
-    kubectl patch svc argocd-server -n {{ argocd_namespace }} -p '{"spec": {"type": "LoadBalancer"}}'
+    kubectl patch svc argocd-server -n {{ argocd_namespace }} -p '{"spec": {"type": "ClusterIP"}}'
 
-- name: Set ArgoCD server to insecure mode (for Traefik ingress)
+- name: Set ArgoCD server to insecure mode (Istio Gateway handles TLS)
   command: |
     kubectl patch configmap argocd-cmd-params-cm -n {{ argocd_namespace }} --type merge -p '{"data": {"server.insecure": "true"}}'
 

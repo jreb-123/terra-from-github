@@ -10,7 +10,7 @@ service:
   port: 3001
 
 ingress:
-  enabled: true
+  enabled: false
   host: uptime.51.255.12.10.nip.io
 
 persistence:

@@ -1,7 +1,7 @@
 ---
-- name: Verify K3D cluster
-  hosts: k3d_hosts[0]
-  become: no
+- name: Verify K3s cluster
+  hosts: k3s_masters[0]
+  become: yes
   tasks:
     - name: Get cluster nodes
       command: kubectl get nodes -o wide
@@ -20,3 +20,12 @@
     - name: Display ready node count
       debug:
         msg: "{{ ready_count.stdout }} nodes are Ready"
+
+    - name: Verify Traefik is NOT running
+      shell: kubectl get pods -n kube-system | grep traefik || echo "Traefik not found (expected for Istio setup)"
+      register: traefik_check
+      changed_when: false
+
+    - name: Show Traefik check result
+      debug:
+        var: traefik_check.stdout_lines

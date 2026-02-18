@@ -1,20 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: nginx-demo
+  name: istio-base
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
 spec:
   project: default
   source:
-    repoURL: https://github.com/jrebt/terra-from-github.git
-    targetRevision: main
-    path: cluster/apps/nginx-demo
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: base
+    targetRevision: 1.24.2
   destination:
     server: https://kubernetes.default.svc
-    namespace: nginx-demo
+    namespace: istio-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true

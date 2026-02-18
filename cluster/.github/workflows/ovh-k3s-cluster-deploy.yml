@@ -1,4 +1,4 @@
-name: 'OVH K3D Cluster Deploy'
+name: 'OVH K3s Istio Cluster Deploy'
 on:
   workflow_dispatch:
     inputs:
@@ -45,7 +45,7 @@ jobs:
       - name: Cleanup existing keypair
         if: github.event.inputs.action == 'apply' || github.event.inputs.action == 'clean'
         run: |
-          openstack keypair delete k3d-cluster-keypair || echo "Keypair not found, continuing"
+          openstack keypair delete k3s-istio-keypair || echo "Keypair not found, continuing"
         env:
           OS_AUTH_URL: "https://auth.cloud.ovh.net/v3"
           OS_DOMAIN_NAME: "default"
@@ -177,8 +177,8 @@ jobs:
           echo "${{ secrets.OVH_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Wait 5min for instances
-        run: sleep 300
+      - name: Wait 7min for instances
+        run: sleep 420
 
       - name: Run Ansible Playbooks
         run: |

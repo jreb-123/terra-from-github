@@ -1,7 +1,6 @@
 ---
-- name: Install Docker and K3D cluster
-  hosts: k3d_hosts
+- name: Install K3s master nodes
+  hosts: k3s_masters
   become: yes
   roles:
-    - docker
-    - k3d
+    - k3s-master

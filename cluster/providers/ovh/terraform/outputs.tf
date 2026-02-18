@@ -2,7 +2,7 @@ output "ansible_inventory" {
   value = yamlencode({
     all = {
       children = {
-        k3d_hosts = {
+        k3s_masters = {
           hosts = {
             for idx, host in openstack_compute_instance_v2.k3s_master :
             host.name => {
