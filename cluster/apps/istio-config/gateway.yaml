@@ -15,3 +15,4 @@ spec:
         - "argocd.92.222.102.117.nip.io"
         - "events.92.222.102.117.nip.io"
         - "uptime.92.222.102.117.nip.io"
+        - "kiali.92.222.102.117.nip.io"
